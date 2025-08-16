@@ -1,29 +1,40 @@
 #MaxThreadsPerHotkey 2
 
+profiles := [
+    { name: "Nether Warts",  row_clear_time: 96000, void_drop_time: 3500, w_layer_swap_time: 0,  layer_count: 5 }
+]
+
+
 state := {
-    row_clear_time: 96000,
-    void_drop_time: 3500,
-    layer_count: 5,
+    profile_name:"",
+    row_clear_time: 0,
+    void_drop_time: 0,
+    w_layer_swap_time: 0, 
+    layer_count: 0,
     is_active: false,
-    keys: {a_key:"a", d_key:"d"},
+    keys: {a_key:"a", d_key:"d", w_key:"w"},
     step_interval: 500,
 }
 
 state.current_key:= state.keys.a_key
-
+set_profile(profiles[1])
+update_tray()
 
 F1::
 F2::
 {
+    global state
+
     if (state.is_active) {
         state.is_active:=false
     } else {
         run_farm(A_ThisHotkey = "F1" ? state.keys.d_key : state.keys.a_key)
     }
 }
-return
 
 run_farm(start_key){
+    global state
+
     state.current_key:=start_key
 
     state.is_active:=true
@@ -33,6 +44,9 @@ run_farm(start_key){
         clear_row()
         if(state.is_active==false)
             return
+
+        if(state.w_layer_swap_time!=0)
+            w_layer_swap()
         
         toggle_direction()
     }
@@ -40,6 +54,8 @@ run_farm(start_key){
 
 clear_row()
 {
+    global state
+
     row_time_left:=state.row_clear_time+rand_offset_time()
     while(row_time_left>0 && state.is_active)
     {
@@ -59,16 +75,66 @@ clear_row()
 
 do_row_step(interval_time)
 {
+    global state
+
     Send "{" state.current_key " down}"
     Sleep interval_time
 }
 
+w_layer_swap(){
+    global state
+    
+    Send "{" state.keys.w_key " down}"
+    Sleep state.w_layer_swap_time
+    Send "{" state.keys.w_key " up}"
+}
+
 toggle_direction()
 {
+    global state
+
     state.current_key:=state.current_key==state.keys.a_key?state.keys.d_key:state.keys.a_key
 }
 
 rand_offset_time()
 {
-    return Random() 50 200
+    return Random(50, 200)
+}
+
+set_profile(profile,*){
+    global state
+
+    if(state.is_active){
+        MsgBox("Please deactivate the macro first")
+        return
+    }
+
+    state.profile_name:=profile.name
+    state.row_clear_time:=profile.row_clear_time
+    state.void_drop_time:=profile.void_drop_time
+    state.w_layer_swap_time:=profile.w_layer_swap_time
+    state.layer_count:=profile.layer_count
+
+    update_tray()
+}
+
+update_tray(){
+    global state
+
+    A_TrayMenu.Delete()
+
+    A_TrayMenu.Add("Name: " state.profile_name, (*) => 0)
+    A_TrayMenu.Add("Row clear time: " state.row_clear_time, (*) => 0)
+    A_TrayMenu.Add("Void drop time: " state.void_drop_time, (*) => 0)
+    A_TrayMenu.Add("W layer swap time: " state.w_layer_swap_time, (*) => 0)
+    A_TrayMenu.Add("Layer count: " state.layer_count, (*) => 0)
+
+    profileMenu := Menu()
+    for i, profile in profiles {
+        profileMenu.Add(profile.name, set_profile.Bind(profile))
+    }
+
+
+    A_TrayMenu.Add("Profiles", profileMenu)
+    A_TrayMenu.Add("Exit", (*) => ExitApp())
 }
