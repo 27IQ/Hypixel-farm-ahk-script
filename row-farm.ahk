@@ -199,7 +199,7 @@ activate_current_buttons() {
     deviation:=get_click_deviation()
 
     Click "down"
-    PreciseSleep(deviation[1])
+    PreciseSleep(500+deviation[1])
     Send "{" state.current_key " down}"
     PreciseSleep(deviation[2])
 }
