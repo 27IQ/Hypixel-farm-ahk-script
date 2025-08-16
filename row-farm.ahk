@@ -12,7 +12,7 @@ state := {
     is_paused: false,
     focus_lost: false,
     keys: { a_key: "a", d_key: "d", w_key: "w" },
-    pause_check_interval: 500,
+    pause_check_interval: 100,
     show_pause_Message: true,
 
     debugging: false,
@@ -195,14 +195,31 @@ handle_pause_state() {
 
 activate_current_buttons() {
     global state
-    Send "{" state.current_key " down}"
+
+    deviation:=get_click_deviation()
+
     Click "down"
+    PreciseSleep(deviation[1])
+    Send "{" state.current_key " down}"
+    PreciseSleep(deviation[2])
 }
 
 deactivate_current_buttons() {
     global state
+
+    deviation:=get_click_deviation()
+
     Send "{" state.current_key " up}"
+    PreciseSleep(deviation[1])
     Click "up"
+    PreciseSleep(deviation[2])
+}
+
+get_click_deviation(){
+    rand:=Random(50,100)
+    deviator:=Random(0,50)
+
+    return [rand,deviator]
 }
 
 w_layer_swap() {
@@ -280,4 +297,16 @@ GetUnixTimestamp() {
     NowUTC := A_NowUTC
     NowUTC := DateDiff(NowUTC, 1970, 'S')
     Return NowUTC
+}
+
+PreciseSleep(ms) {
+    start := A_TickCount
+    end   := start + ms
+
+    if (ms > 20)
+        Sleep ms - 15
+
+    while (A_TickCount < end) {
+        DllCall("Sleep", "UInt", 1)
+    }
 }
