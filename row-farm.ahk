@@ -108,13 +108,14 @@ do_row_step(interval_time)
 check_for_pause(){
     global state 
 
+    Send "{" state.current_key " up}"
+    Click "up"
+
     while (state.is_active&&state.is_paused)
     {
         if(state.show_pause_Message)
             ToolTip("paused")
 
-        Send "{" state.current_key " up}"
-        Click "up"
         Sleep state.step_interval
     }
 
@@ -163,7 +164,7 @@ update_tray(){
 
     A_TrayMenu.Delete()
 
-    A_TrayMenu.Add("Name: " state.profile_name, (*) => 0)
+    A_TrayMenu.Add("Profile: " state.profile_name, (*) => 0)
     A_TrayMenu.Add("Row clear time: " state.row_clear_time, (*) => 0)
     A_TrayMenu.Add("Void drop time: " state.void_drop_time, (*) => 0)
     A_TrayMenu.Add("W layer swap time: " state.w_layer_swap_time, (*) => 0)
@@ -173,7 +174,6 @@ update_tray(){
     for i, profile in profiles {
         profileMenu.Add(profile.name, set_profile.Bind(profile))
     }
-
 
     A_TrayMenu.Add("Profiles", profileMenu)
     pause_state_message:=state.show_pause_Message?"enabled":"disabled"
