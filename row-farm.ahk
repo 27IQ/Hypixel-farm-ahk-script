@@ -247,7 +247,6 @@ update_tray() {
     A_TrayMenu.Add("Void drop time: " state.void_drop_time, (*) => 0)
     A_TrayMenu.Add("W layer swap time: " state.w_layer_swap_time, (*) => 0)
     A_TrayMenu.Add("Layer count: " state.layer_count, (*) => 0)
-    A_TrayMenu.Add("Pause check interval: " state.pause_check_interval, (*) => 0)
 
     profileMenu := Menu()
     for i, profile in profiles {
