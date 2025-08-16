@@ -15,6 +15,13 @@ state := {
     keys: { a_key: "a", d_key: "d", w_key: "w" },
     step_interval: 100,
     show_pause_Message: true,
+
+    debugging: true,
+    added_time:0,
+    walked_time:0,
+    paused_time:0,
+    start_time:0,
+    interval_1:0
 }
 
 state.current_key := state.keys.a_key
@@ -58,6 +65,9 @@ F3::
 run_farm(start_key) {
     global state
 
+    if(state.debugging)
+        state.start_time:=getUnixTimestamp()
+
     state.current_key := start_key
 
     state.is_active := true
@@ -71,6 +81,21 @@ run_farm(start_key) {
                 w_layer_swap()
 
             toggle_direction()
+
+            if(state.debugging){
+                state.interval_1:=getUnixTimestamp()
+                interval_duration:=state.interval_1-state.start_time
+
+                MsgBox
+                (
+                "added_time: " state.added_time "`n"
+                "walked_time: " state.walked_time "`n"
+                "paused_time: " state.paused_time "`n"
+                "start_time: " state.start_time "`n"
+                "interval_time: " state.interval_1 "`n"
+                "interval_duration: " interval_duration
+                )
+            }
         }
         Sleep state.void_drop_time
     }
@@ -94,6 +119,10 @@ clear_row() {
 
         do_row_step(current_interval, already_stepping)
         already_stepping := true
+
+        if(state.debugging){
+            ToolTip(state.added_time)
+        }
     }
 
     deactivate_current_buttons()
@@ -106,6 +135,9 @@ do_row_step(interval_time, already_stepping) {
 
     if (was_paused || !already_stepping)
         activate_current_buttons()
+
+    if(state.debugging)
+        state.walked_time+=interval_time
 
     Sleep interval_time
 }
@@ -139,6 +171,9 @@ check_for_pause() {
         if (state.show_pause_Message)
             ToolTip("paused")
 
+        if(state.debugging)
+            state.paused_time+=state.step_interval
+
         Sleep state.step_interval
     }
 
@@ -151,6 +186,9 @@ w_layer_swap() {
     global state
 
     Send "{" state.keys.w_key " down}"
+    if(state.debugging)
+        state.walked_time+=state.w_layer_swap_time 
+    
     Sleep state.w_layer_swap_time + rand_offset_time()
     Send "{" state.keys.w_key " up}"
 }
@@ -162,11 +200,19 @@ toggle_direction() {
 }
 
 short_rand_offset_time() {
-    return Random(50, 100)
+    global state
+    rand:=Random(1, 50)
+    state.added_time+=rand
+
+    return rand
 }
 
 rand_offset_time() {
-    return Random(50, 200)
+    global state
+    rand:=Random(50, 100)
+    state.added_time+=rand
+
+    return rand
 }
 
 set_profile(profile, *) {
@@ -223,4 +269,10 @@ toggle_pause_message() {
     ToolTip
 
     update_tray()
+}
+    
+GetUnixTimestamp() {
+    NowUTC := A_NowUTC
+    NowUTC := DateDiff(NowUTC, 1970, 'S')
+    Return NowUTC
 }
