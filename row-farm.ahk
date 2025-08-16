@@ -1,91 +1,71 @@
-global row_clear_time:=5000
-global void_drop_time:=3500
-global layer_count:=5
-global is_active:=false
-global directions:= {left:"left", right:"right"}
-global keys:={a_key:"a", d_key:"d"}
-global step_interval:=500
+#MaxThreadsPerHotkey 2
 
-F1::
-{
-    global is_active
-    if(is_active)
-    {
-        is_active:=false
-        return
-    } 
-
-    global current_direction:=directions.right
-    global current_key:=keys.a_key
-    
-    is_active:=true
-
-    Loop layer_count
-    {
-        clear_row()
-        toggle_direction()
-    }
+state := {
+    row_clear_time: 96000,
+    void_drop_time: 3500,
+    layer_count: 5,
+    is_active: false,
+    keys: {a_key:"a", d_key:"d"},
+    step_interval: 500,
 }
 
+state.current_key:= state.keys.a_key
+
+
+F1::
 F2::
 {
-    global is_active
-    if(is_active)
-    {
-        is_active:=false
-        return
-    } 
-    
-    global current_direction:=directions.left
-    global current_key:=keys.d_key
+    if (state.is_active) {
+        state.is_active:=false
+    } else {
+        run_farm(A_ThisHotkey = "F1" ? state.keys.d_key : state.keys.a_key)
+    }
+}
+return
 
-    is_active:=true
+run_farm(start_key){
+    state.current_key:=start_key
 
-    Loop layer_count
+    state.is_active:=true
+
+    Loop state.layer_count
     {
         clear_row()
+        if(state.is_active==false)
+            return
+        
         toggle_direction()
     }
 }
 
 clear_row()
 {
-    row_time_left:=row_clear_time+rand_offset_time()
-
-    while(row_time_left>0 && is_active)
+    row_time_left:=state.row_clear_time+rand_offset_time()
+    while(row_time_left>0 && state.is_active)
     {
-        if(row_time_left>step_interval){
-            row_time_left-=step_interval
-            current_interval:=step_interval
+        if(row_time_left>state.step_interval){
+            row_time_left-=state.step_interval
+            current_interval:=state.step_interval
         }else{
-            current_interval_:=row_time_left
+            current_interval:=row_time_left
             row_time_left:=0
         }
             
         do_row_step(current_interval)
     }
 
-    Send "{" current_key " up}"
+    Send "{" state.current_key " up}"
 }
 
 do_row_step(interval_time)
 {
-    Send "{" current_key " down}"
+    Send "{" state.current_key " down}"
     Sleep interval_time
 }
 
 toggle_direction()
 {
-    if(current_direction==directions.left)
-    {
-        global current_direction:=directions.right
-        global current_key:=keys.a_key
-    }
-    else
-    {
-        global current_direction:=directions.left
-        global current_key:=keys.d_key
-    }
+    state.current_key:=state.current_key==state.keys.a_key?state.keys.d_key:state.keys.a_key
 }
 
 rand_offset_time()
