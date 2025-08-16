@@ -14,7 +14,6 @@ state := {
     keys: { a_key: "a", d_key: "d", w_key: "w" },
     pause_check_interval: 100,
     show_pause_Message: true,
-
     debugging: false,
     added_time: 0,
     walked_time: 0,
@@ -64,7 +63,7 @@ F3::
 run_farm(start_key) {
     global state
 
-    if(state.debugging) {
+    if (state.debugging) {
         state.start_time := getUnixTimestamp()
         state.added_time := 0
         state.walked_time := 0
@@ -72,14 +71,14 @@ run_farm(start_key) {
     }
 
     state.is_active := true
-    
+
     while (state.is_active) {
 
         state.current_key := start_key
 
         loop state.layer_count {
             clear_row_optimized()
-            
+
             if (!state.is_active)
                 return
 
@@ -88,10 +87,10 @@ run_farm(start_key) {
 
             toggle_direction()
         }
-        
+
         handle_void_drop()
 
-        if(state.debugging) {
+        if (state.debugging) {
             state.interval_1 := getUnixTimestamp()
             interval_duration := state.interval_1 - state.start_time
 
@@ -111,27 +110,27 @@ clear_row_optimized() {
     global state
 
     total_time := state.row_clear_time + 50
-    
+
     activate_current_buttons()
-    
+
     elapsed_time := 0
-    
+
     while (elapsed_time < total_time && state.is_active) {
 
         remaining_time := total_time - elapsed_time
         sleep_chunk := Min(state.pause_check_interval, remaining_time)
-        
+
         sleep_start := A_TickCount
         Sleep sleep_chunk
         actual_sleep := A_TickCount - sleep_start
-        
+
         elapsed_time += actual_sleep
-        
-        if(state.debugging) {
+
+        if (state.debugging) {
             state.walked_time += actual_sleep
             ToolTip("Row progress: " . Round((elapsed_time / total_time) * 100) . "%")
         }
-        
+
         if (state.is_paused) {
             deactivate_current_buttons()
             handle_pause_state()
@@ -139,67 +138,67 @@ clear_row_optimized() {
                 activate_current_buttons()
         }
     }
-    
+
     deactivate_current_buttons()
     ToolTip()
 }
 
 handle_void_drop() {
     global state
-    
-    if(state.debugging)
+
+    if (state.debugging)
         state.walked_time += state.void_drop_time
-    
+
     elapsed_void := 0
-    
+
     while (elapsed_void < state.void_drop_time && state.is_active) {
         remaining_void := state.void_drop_time - elapsed_void
         sleep_chunk := Min(state.pause_check_interval, remaining_void)
-        
+
         Sleep sleep_chunk
         elapsed_void += sleep_chunk
-        
-        if(state.debugging)
+
+        if (state.debugging)
             ToolTip("Void drop: " . Round((elapsed_void / state.void_drop_time) * 100) . "%")
-        
+
         if (state.is_paused) {
             handle_pause_state()
         }
     }
-    
+
     ToolTip()
 }
 
 handle_pause_state() {
     global state
-    
+
     pause_start := A_TickCount
-    
+
     while (state.is_active && state.is_paused) {
         if (state.show_pause_Message)
             ToolTip("PAUSED - Press F3 to resume")
 
         Sleep state.pause_check_interval
-        
-        if(state.debugging)
+
+        if (state.debugging)
             state.paused_time += state.pause_check_interval
     }
-    
-    if(state.debugging) {
+
+    if (state.debugging) {
         actual_pause := A_TickCount - pause_start
         state.paused_time += actual_pause
     }
-    
+
     ToolTip()
 }
 
 activate_current_buttons() {
     global state
 
-    deviation:=get_click_deviation()
+    deviation := get_click_deviation()
 
     Click "down"
-    PreciseSleep(500+deviation[1])
+    PreciseSleep(500 + deviation[1])
     Send "{" state.current_key " down}"
     PreciseSleep(deviation[2])
 }
@@ -207,7 +206,7 @@ activate_current_buttons() {
 deactivate_current_buttons() {
     global state
 
-    deviation:=get_click_deviation()
+    deviation := get_click_deviation()
 
     Send "{" state.current_key " up}"
     PreciseSleep(deviation[1])
@@ -215,21 +214,21 @@ deactivate_current_buttons() {
     PreciseSleep(deviation[2])
 }
 
-get_click_deviation(){
-    rand:=Random(50,100)
-    deviator:=Random(0,50)
+get_click_deviation() {
+    rand := Random(50, 100)
+    deviator := Random(0, 50)
 
-    return [rand,deviator]
+    return [rand, deviator]
 }
 
 w_layer_swap() {
     global state
 
     Send "{" state.keys.w_key " down}"
-    
-    if(state.debugging)
-        state.walked_time += state.w_layer_swap_time 
-    
+
+    if (state.debugging)
+        state.walked_time += state.w_layer_swap_time
+
     Sleep state.w_layer_swap_time + 50
     Send "{" state.keys.w_key " up}"
 }
@@ -292,16 +291,16 @@ toggle_pause_message() {
     ToolTip()
     update_tray()
 }
-    
+
 GetUnixTimestamp() {
     NowUTC := A_NowUTC
     NowUTC := DateDiff(NowUTC, 1970, 'S')
-    Return NowUTC
+    return NowUTC
 }
 
 PreciseSleep(ms) {
     start := A_TickCount
-    end   := start + ms
+    end := start + ms
 
     if (ms > 20)
         Sleep ms - 15
