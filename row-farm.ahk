@@ -2,6 +2,7 @@
 
 profiles := [
     { name: "Nether Warts",  row_clear_time: 96000, void_drop_time: 3500, w_layer_swap_time: 0,  layer_count: 5 },
+    { name: "Nether Warts2",  row_clear_time: 3000, void_drop_time: 3500, w_layer_swap_time: 1000,  layer_count: 2 }
 ]
 
 
@@ -193,7 +194,7 @@ toggle_pause_message(){
     global state
 
     state.show_pause_Message:=state.show_pause_Message?false:true
-    ToolTipd                                
+    ToolTip
 
     update_tray()
 }
