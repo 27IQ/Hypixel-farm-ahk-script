@@ -71,10 +71,12 @@ run_farm(start_key) {
         state.paused_time := 0
     }
 
-    state.current_key := start_key
     state.is_active := true
     
     while (state.is_active) {
+
+        state.current_key := start_key
+
         loop state.layer_count {
             clear_row_optimized()
             
