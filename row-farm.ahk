@@ -1,17 +1,16 @@
 #MaxThreadsPerHotkey 2
 
 ; Naming scheme : <plot_length>x<layercount> <Name> @ <speed>
-global profiles := [
-    { name: "5x5 Nether Warts @ 116 ", row_clear_time: 96000, void_drop_time: 3500, w_layer_swap_time: 0, layer_count: 5 },   
-]
+global profiles := [{ name: "5x5 Nether Warts @ 116 ", row_clear_time: 96000, void_drop_time: 3500, w_layer_swap_time: 0,
+    layer_count: 5 },]
 
-global keys :={ a_key: "a", d_key: "d", w_key: "w" }
+global keys := { a_key: "a", d_key: "d", w_key: "w" }
 
-
-global moods :=[
-    {click_delay: 0,     overshoot_chance: 0,    overshoot_duration: 0,  overshoot_duration_variable: 0,     mood_min_duration: 10,  mood_max_duration: 1200000, mood_chance: 0.30},
-    {click_delay: 100,   overshoot_chance: 0.2,  overshoot_duration: 5,  overshoot_duration_variable: 3000,  mood_min_duration: 10,  mood_max_duration: 1800000, mood_chance: 0.45},
-    {click_delay: 250,   overshoot_chance: 0.1,  overshoot_duration: 10, overshoot_duration_variable: 5000,  mood_min_duration: 5,   mood_max_duration: 900000,  mood_chance: 0.25},
+global moods := [{ click_delay: 0, overshoot_chance: 0, overshoot_duration: 0, overshoot_duration_variable: 0,
+    mood_min_duration: 10, mood_max_duration: 1200000, mood_chance: 0.30 }, { click_delay: 100, overshoot_chance: 0.2,
+        overshoot_duration: 5, overshoot_duration_variable: 3000, mood_min_duration: 10, mood_max_duration: 1800000,
+        mood_chance: 0.45 }, { click_delay: 250, overshoot_chance: 0.1, overshoot_duration: 10,
+            overshoot_duration_variable: 5000, mood_min_duration: 5, mood_max_duration: 900000, mood_chance: 0.25 },
 ]
 
 global state := {
@@ -129,7 +128,7 @@ run_farm(start_key) {
 clear_row() {
     global state
 
-    total_time := state.row_clear_time + Random(0,250) + get_mood_overshoot()
+    total_time := state.row_clear_time + Random(0, 250) + get_mood_overshoot()
 
     activate_current_buttons()
 
@@ -146,9 +145,9 @@ clear_row() {
 
         elapsed_time += actual_sleep
 
-        if(state.current_mood_duration>0) {
-            state.current_mood_duration-= state.polling_interval
-        }else{
+        if (state.current_mood_duration > 0) {
+            state.current_mood_duration -= state.polling_interval
+        } else {
             switch_mood()
         }
 
@@ -246,7 +245,7 @@ get_click_deviation() {
     rand := Random(50, 100)
     deviator := Random(0, 50)
 
-    mood_delay:=state.force_attentive_mood?moods[1].click_delay:state.current_mood
+    mood_delay := state.force_attentive_mood ? moods[1].click_delay : state.current_mood
 
     return [rand, deviator] + mood_delay
 }
@@ -268,51 +267,51 @@ toggle_direction() {
     state.current_key := state.current_key == state.keys.a_key ? state.keys.d_key : state.keys.a_key
 }
 
-get_mood_overshoot(){
+get_mood_overshoot() {
     global state
 
-    overshoot:=0
+    overshoot := 0
 
-    if(state.force_attentive_mood)
+    if (state.force_attentive_mood)
         return overshoot
 
-    if(state.current_mood.overshoot_duration==0)
+    if (state.current_mood.overshoot_duration == 0)
         return
 
-    roll:=Random(0,1)
+    roll := Random(0, 1)
 
-    if(state.current_mood.overshoot_chance<=roll){
-        min_dur:=state.current_mood.overshoot_duration-state.current_mood.overshoot_duration_variable
-        max_dur:=state.current_mood.overshoot_duration+state.current_mood.overshoot_duration_variable
-        overshoot:= Random(min_dur,max_dur)
+    if (state.current_mood.overshoot_chance <= roll) {
+        min_dur := state.current_mood.overshoot_duration - state.current_mood.overshoot_duration_variable
+        max_dur := state.current_mood.overshoot_duration + state.current_mood.overshoot_duration_variable
+        overshoot := Random(min_dur, max_dur)
     }
 
     return overshoot
 }
 
-switch_mood(){
+switch_mood() {
     global state
 
-    new_mood:=get_next_mood()
+    new_mood := get_next_mood()
 
-    state.previous_mood:=state.current_mood
-    state.current_mood:=new_mood
-    state.current_mood_duration:=Random(state.current_mood.mood_min_duration, state.current_mood.mood_max_duration)
+    state.previous_mood := state.current_mood
+    state.current_mood := new_mood
+    state.current_mood_duration := Random(state.current_mood.mood_min_duration, state.current_mood.mood_max_duration)
 }
 
-get_next_mood(){
-    chances:=[moods[1].mood_chance,moods[2].mood_chance,moods[3].mood_chance]
+get_next_mood() {
+    chances := [moods[1].mood_chance, moods[2].mood_chance, moods[3].mood_chance]
 
-    current_threshold:=0
-    roll:=Random(0,1)
+    current_threshold := 0
+    roll := Random(0, 1)
 
-    selected_mood_index:=0
+    selected_mood_index := 0
 
     for index, chance in chances {
-        current_threshold+=chances[index]
+        current_threshold += chances[index]
 
-        if(selected_mood_index==0 && current_threshold <= roll) {
-            selected_mood_index:=index
+        if (selected_mood_index == 0 && current_threshold <= roll) {
+            selected_mood_index := index
         }
     }
 
@@ -355,7 +354,7 @@ update_tray() {
     A_TrayMenu.Add("Profiles", profileMenu)
     pause_state_message := state.show_pause_Message ? "enabled" : "disabled"
     A_TrayMenu.Add("Pause message: " pause_state_message, (*) => toggle_pause_message())
-    force_attentive_mood_message:= state.force_attentive_mood? "enabled" : "disabled"
+    force_attentive_mood_message := state.force_attentive_mood ? "enabled" : "disabled"
     A_TrayMenu.Add("Force attentive mood: " force_attentive_mood_message, (*) => toggle_attentive_mood_force())
     A_TrayMenu.Add("Exit", (*) => ExitApp())
 }
@@ -375,9 +374,9 @@ toggle_pause_message() {
     update_tray()
 }
 
-toggle_attentive_mood_force(){
+toggle_attentive_mood_force() {
     global state
-    state.force_attentive_mood:= !state.force_attentive_mood
+    state.force_attentive_mood := !state.force_attentive_mood
     update_tray()
 }
 
