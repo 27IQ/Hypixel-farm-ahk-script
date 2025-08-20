@@ -1,19 +1,40 @@
 #MaxThreadsPerHotkey 2
 
-profiles := [{ name: "Nether Warts", row_clear_time: 96000, void_drop_time: 3500, w_layer_swap_time: 0, layer_count: 5 }]
+; Naming scheme : <plot_length>x<layercount> <Name> @ <speed>
+global profiles := [
+    { name: "5x5 Nether Warts @ 116 ", row_clear_time: 96000, void_drop_time: 3500, w_layer_swap_time: 0, layer_count: 5 },   
+]
 
-state := {
+global keys :={ a_key: "a", d_key: "d", w_key: "w" }
+
+
+global moods :=[
+    {click_delay: 0,     overshoot_chance: 0,    overshoot_duration: 0,  overshoot_duration_variable: 0,     mood_min_duration: 10,  mood_max_duration: 1200000, mood_chance: 0.30},
+    {click_delay: 100,   overshoot_chance: 0.2,  overshoot_duration: 5,  overshoot_duration_variable: 3000,  mood_min_duration: 10,  mood_max_duration: 1800000, mood_chance: 0.45},
+    {click_delay: 250,   overshoot_chance: 0.1,  overshoot_duration: 10, overshoot_duration_variable: 5000,  mood_min_duration: 5,   mood_max_duration: 900000,  mood_chance: 0.25},
+]
+
+global state := {
+    ; profile
     profile_name: "",
     row_clear_time: 0,
     void_drop_time: 0,
     w_layer_swap_time: 0,
     layer_count: 0,
+    ; programm state
     is_active: false,
     is_paused: false,
     focus_lost: false,
-    keys: { a_key: "a", d_key: "d", w_key: "w" },
-    pause_check_interval: 100,
+    current_key: keys.a_key,
+    ; settings
+    polling_interval: 100,
     show_pause_Message: true,
+    ; moods
+    current_mood: moods[1],
+    previous_mood: moods[1],
+    current_mood_duration: moods[1].mood_min_duration,
+    force_attentive_mood: false,
+    ; debugging
     debugging: false,
     added_time: 0,
     walked_time: 0,
@@ -22,7 +43,6 @@ state := {
     interval_1: 0
 }
 
-state.current_key := state.keys.a_key
 set_profile(profiles[1])
 update_tray()
 
@@ -77,7 +97,7 @@ run_farm(start_key) {
         state.current_key := start_key
 
         loop state.layer_count {
-            clear_row_optimized()
+            clear_row()
 
             if (!state.is_active)
                 return
@@ -106,10 +126,10 @@ run_farm(start_key) {
     }
 }
 
-clear_row_optimized() {
+clear_row() {
     global state
 
-    total_time := state.row_clear_time + 50
+    total_time := state.row_clear_time + Random(0,250) + get_mood_overshoot()
 
     activate_current_buttons()
 
@@ -118,13 +138,19 @@ clear_row_optimized() {
     while (elapsed_time < total_time && state.is_active) {
 
         remaining_time := total_time - elapsed_time
-        sleep_chunk := Min(state.pause_check_interval, remaining_time)
+        sleep_chunk := Min(state.polling_interval, remaining_time)
 
         sleep_start := A_TickCount
         Sleep sleep_chunk
         actual_sleep := A_TickCount - sleep_start
 
         elapsed_time += actual_sleep
+
+        if(state.current_mood_duration>0) {
+            state.current_mood_duration-= state.polling_interval
+        }else{
+            switch_mood()
+        }
 
         if (state.debugging) {
             state.walked_time += actual_sleep
@@ -153,7 +179,7 @@ handle_void_drop() {
 
     while (elapsed_void < state.void_drop_time && state.is_active) {
         remaining_void := state.void_drop_time - elapsed_void
-        sleep_chunk := Min(state.pause_check_interval, remaining_void)
+        sleep_chunk := Min(state.polling_interval, remaining_void)
 
         Sleep sleep_chunk
         elapsed_void += sleep_chunk
@@ -178,10 +204,10 @@ handle_pause_state() {
         if (state.show_pause_Message)
             ToolTip("PAUSED - Press F3 to resume")
 
-        Sleep state.pause_check_interval
+        Sleep state.polling_interval
 
         if (state.debugging)
-            state.paused_time += state.pause_check_interval
+            state.paused_time += state.polling_interval
     }
 
     if (state.debugging) {
@@ -215,10 +241,14 @@ deactivate_current_buttons() {
 }
 
 get_click_deviation() {
+    global state
+
     rand := Random(50, 100)
     deviator := Random(0, 50)
 
-    return [rand, deviator]
+    mood_delay:=state.force_attentive_mood?moods[1].click_delay:state.current_mood
+
+    return [rand, deviator] + mood_delay
 }
 
 w_layer_swap() {
@@ -236,6 +266,57 @@ w_layer_swap() {
 toggle_direction() {
     global state
     state.current_key := state.current_key == state.keys.a_key ? state.keys.d_key : state.keys.a_key
+}
+
+get_mood_overshoot(){
+    global state
+
+    overshoot:=0
+
+    if(state.force_attentive_mood)
+        return overshoot
+
+    if(state.current_mood.overshoot_duration==0)
+        return
+
+    roll:=Random(0,1)
+
+    if(state.current_mood.overshoot_chance<=roll){
+        min_dur:=state.current_mood.overshoot_duration-state.current_mood.overshoot_duration_variable
+        max_dur:=state.current_mood.overshoot_duration+state.current_mood.overshoot_duration_variable
+        overshoot:= Random(min_dur,max_dur)
+    }
+
+    return overshoot
+}
+
+switch_mood(){
+    global state
+
+    new_mood:=get_next_mood()
+
+    state.previous_mood:=state.current_mood
+    state.current_mood:=new_mood
+    state.current_mood_duration:=Random(state.current_mood.mood_min_duration, state.current_mood.mood_max_duration)
+}
+
+get_next_mood(){
+    chances:=[moods[1].mood_chance,moods[2].mood_chance,moods[3].mood_chance]
+
+    current_threshold:=0
+    roll:=Random(0,1)
+
+    selected_mood_index:=0
+
+    for index, chance in chances {
+        current_threshold+=chances[index]
+
+        if(selected_mood_index==0 && current_threshold <= roll) {
+            selected_mood_index:=index
+        }
+    }
+
+    return moods[selected_mood_index]
 }
 
 set_profile(profile, *) {
@@ -274,6 +355,8 @@ update_tray() {
     A_TrayMenu.Add("Profiles", profileMenu)
     pause_state_message := state.show_pause_Message ? "enabled" : "disabled"
     A_TrayMenu.Add("Pause message: " pause_state_message, (*) => toggle_pause_message())
+    force_attentive_mood_message:= state.force_attentive_mood? "enabled" : "disabled"
+    A_TrayMenu.Add("Force attentive mood: " force_attentive_mood_message, (*) => toggle_attentive_mood_force())
     A_TrayMenu.Add("Exit", (*) => ExitApp())
 }
 
@@ -289,6 +372,12 @@ toggle_pause_message() {
     global state
     state.show_pause_Message := !state.show_pause_Message
     ToolTip()
+    update_tray()
+}
+
+toggle_attentive_mood_force(){
+    global state
+    state.force_attentive_mood:= !state.force_attentive_mood
     update_tray()
 }
 
