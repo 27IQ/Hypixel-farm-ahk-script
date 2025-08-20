@@ -65,7 +65,7 @@ F2::
         state.is_paused := false
         state.focus_lost := false
     } else {
-        run_farm(A_ThisHotkey = "F1" ? state.keys.d_key : state.keys.a_key)
+        run_farm(A_ThisHotkey = "F1" ? keys.d_key : keys.a_key)
     }
 }
 
@@ -245,26 +245,26 @@ get_click_deviation() {
     rand := Random(50, 100)
     deviator := Random(0, 50)
 
-    mood_delay := state.force_attentive_mood ? moods[1].click_delay : state.current_mood
+    mood_delay := state.force_attentive_mood ? moods[1].click_delay : state.current_mood.click_delay
 
-    return [rand, deviator] + mood_delay
+    return [rand+ mood_delay, deviator] 
 }
 
 w_layer_swap() {
     global state
 
-    Send "{" state.keys.w_key " down}"
+    Send "{" keys.w_key " down}"
 
     if (state.debugging)
         state.walked_time += state.w_layer_swap_time
 
     Sleep state.w_layer_swap_time + 50
-    Send "{" state.keys.w_key " up}"
+    Send "{" keys.w_key " up}"
 }
 
 toggle_direction() {
     global state
-    state.current_key := state.current_key == state.keys.a_key ? state.keys.d_key : state.keys.a_key
+    state.current_key := state.current_key == keys.a_key ? keys.d_key : keys.a_key
 }
 
 get_mood_overshoot() {
@@ -272,11 +272,8 @@ get_mood_overshoot() {
 
     overshoot := 0
 
-    if (state.force_attentive_mood)
+    if (state.force_attentive_mood || state.current_mood.overshoot_duration == 0)
         return overshoot
-
-    if (state.current_mood.overshoot_duration == 0)
-        return
 
     roll := Random(0, 1)
 
