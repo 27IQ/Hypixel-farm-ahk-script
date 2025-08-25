@@ -1,30 +1,27 @@
 #MaxThreadsPerHotkey 2
 
-; Naming scheme : <plot_length>x<layercount> <Name> @ <speed>
-global profiles := [{ name: "5x5 Nether Warts @ 116 ", row_clear_time: 96000, void_drop_time: 3500, w_layer_swap_time: 0,
-    layer_count: 5 },]
-
 global keys := { a_key: "a", d_key: "d", w_key: "w" }
 
-global moods := [{ click_delay: 0, overshoot_chance: 0, overshoot_duration: 0, overshoot_duration_variable: 0,
-    mood_min_duration: 10, mood_max_duration: 1200000, mood_chance: 0.30 }, { click_delay: 100, overshoot_chance: 0.2,
-        overshoot_duration: 5, overshoot_duration_variable: 3000, mood_min_duration: 10, mood_max_duration: 1800000,
-        mood_chance: 0.45 }, { click_delay: 250, overshoot_chance: 0.1, overshoot_duration: 10,
-            overshoot_duration_variable: 5000, mood_min_duration: 5, mood_max_duration: 900000, mood_chance: 0.25 },
+; Naming scheme : <plot_length>x<layercount> <name> @ <speed> (<pitch>|<yaw>)
+global profiles := [
+    { name: "5x5 Nether Warts @ 116 (|)", row_clear_time: 96000, void_drop_time: 3500, layer_swap_time: 0, layer_count: 5 , key_left:keys.a_key, key_right:keys.d_key, key_layer_swap:keys.w_key},
+    { name: "test ", row_clear_time: 7000, void_drop_time: 1000, layer_swap_time: 0, layer_count: 2 , key_left:keys.a_key, key_right:keys.d_key, key_layer_swap:keys.w_key}
+,]
+
+global moods := [
+    { name:"attentive", click_delay: 0, overshoot_chance: 0, overshoot_duration: 0, overshoot_duration_variable: 0, mood_min_duration: 10, mood_max_duration: 1200000, mood_chance: 0.30 },
+    { name:"inattentive", click_delay: 100, overshoot_chance: 0.2, overshoot_duration: 5, overshoot_duration_variable: 3000, mood_min_duration: 10, mood_max_duration: 1800000,mood_chance: 0.45 },
+    { name:"distracted", click_delay: 250, overshoot_chance: 0.1, overshoot_duration: 10, overshoot_duration_variable: 5000, mood_min_duration: 5, mood_max_duration: 900000, mood_chance: 0.25 },
 ]
 
 global state := {
     ; profile
-    profile_name: "",
-    row_clear_time: 0,
-    void_drop_time: 0,
-    w_layer_swap_time: 0,
-    layer_count: 0,
+    current_profile: profiles[1],
     ; programm state
     is_active: false,
     is_paused: false,
     focus_lost: false,
-    current_key: keys.a_key,
+    current_key: profiles[1].key_left,
     ; settings
     polling_interval: 100,
     show_pause_Message: true,
@@ -34,7 +31,7 @@ global state := {
     current_mood_duration: moods[1].mood_min_duration,
     force_attentive_mood: false,
     ; debugging
-    debugging: false,
+    debugging: true,
     added_time: 0,
     walked_time: 0,
     paused_time: 0,
@@ -65,7 +62,7 @@ F2::
         state.is_paused := false
         state.focus_lost := false
     } else {
-        run_farm(A_ThisHotkey = "F1" ? keys.d_key : keys.a_key)
+        run_farm(A_ThisHotkey = "F1" ? state.current_profile.key_left : state.current_profile.key_right)
     }
 }
 
@@ -95,14 +92,14 @@ run_farm(start_key) {
 
         state.current_key := start_key
 
-        loop state.layer_count {
+        loop state.current_profile.layer_count {
             clear_row()
 
             if (!state.is_active)
                 return
 
-            if (state.w_layer_swap_time != 0)
-                w_layer_swap()
+            if (state.current_profile.layer_swap_time != 0)
+                layer_swap()
 
             toggle_direction()
         }
@@ -128,7 +125,7 @@ run_farm(start_key) {
 clear_row() {
     global state
 
-    total_time := state.row_clear_time + Random(0, 250) + get_mood_overshoot()
+    total_time := state.current_profile.row_clear_time + Random(0, 250) + get_mood_overshoot()
 
     activate_current_buttons()
 
@@ -153,7 +150,7 @@ clear_row() {
 
         if (state.debugging) {
             state.walked_time += actual_sleep
-            ToolTip("Row progress: " . Round((elapsed_time / total_time) * 100) . "%")
+            ToolTip("Row progress: " . Round((elapsed_time / total_time) * 100) . "%`nCurrent mood: " state.current_mood.name)
         }
 
         if (state.is_paused) {
@@ -172,19 +169,19 @@ handle_void_drop() {
     global state
 
     if (state.debugging)
-        state.walked_time += state.void_drop_time
+        state.walked_time += state.current_profile.void_drop_time
 
     elapsed_void := 0
 
-    while (elapsed_void < state.void_drop_time && state.is_active) {
-        remaining_void := state.void_drop_time - elapsed_void
+    while (elapsed_void < state.current_profile.void_drop_time && state.is_active) {
+        remaining_void := state.current_profile.void_drop_time - elapsed_void
         sleep_chunk := Min(state.polling_interval, remaining_void)
 
         Sleep sleep_chunk
         elapsed_void += sleep_chunk
 
         if (state.debugging)
-            ToolTip("Void drop: " . Round((elapsed_void / state.void_drop_time) * 100) . "%")
+            ToolTip("Void drop: " . Round((elapsed_void / state.current_profile.void_drop_time) * 100) . "%")
 
         if (state.is_paused) {
             handle_pause_state()
@@ -250,21 +247,21 @@ get_click_deviation() {
     return [rand+ mood_delay, deviator] 
 }
 
-w_layer_swap() {
+layer_swap() {
     global state
 
-    Send "{" keys.w_key " down}"
+    Send "{" state.current_profile.key_layer_swap " down}"
 
     if (state.debugging)
-        state.walked_time += state.w_layer_swap_time
+        state.walked_time += state.current_profile.layer_swap_time
 
-    Sleep state.w_layer_swap_time + 50
-    Send "{" keys.w_key " up}"
+    Sleep state.current_profile.layer_swap_time + 50
+    Send "{" state.current_profile.key_layer_swap " up}"
 }
 
 toggle_direction() {
     global state
-    state.current_key := state.current_key == keys.a_key ? keys.d_key : keys.a_key
+    state.current_key := state.current_key == state.current_profile.key_left ? state.current_profile.key_right : state.current_profile.key_left
 }
 
 get_mood_overshoot() {
@@ -323,11 +320,7 @@ set_profile(profile, *) {
         return
     }
 
-    state.profile_name := profile.name
-    state.row_clear_time := profile.row_clear_time
-    state.void_drop_time := profile.void_drop_time
-    state.w_layer_swap_time := profile.w_layer_swap_time
-    state.layer_count := profile.layer_count
+    state.current_profile:=profile
 
     update_tray()
 }
@@ -337,11 +330,11 @@ update_tray() {
 
     A_TrayMenu.Delete()
 
-    A_TrayMenu.Add("Profile: " state.profile_name, (*) => 0)
-    A_TrayMenu.Add("Row clear time: " state.row_clear_time, (*) => 0)
-    A_TrayMenu.Add("Void drop time: " state.void_drop_time, (*) => 0)
-    A_TrayMenu.Add("W layer swap time: " state.w_layer_swap_time, (*) => 0)
-    A_TrayMenu.Add("Layer count: " state.layer_count, (*) => 0)
+    A_TrayMenu.Add("Profile: " state.current_profile.name, (*) => 0)
+    A_TrayMenu.Add("Row clear time: " state.current_profile.row_clear_time, (*) => 0)
+    A_TrayMenu.Add("Void drop time: " state.current_profile.void_drop_time, (*) => 0)
+    A_TrayMenu.Add("W layer swap time: " state.current_profile.layer_swap_time, (*) => 0)
+    A_TrayMenu.Add("Layer count: " state.current_profile.layer_count, (*) => 0)
 
     profileMenu := Menu()
     for i, profile in profiles {
@@ -349,9 +342,9 @@ update_tray() {
     }
 
     A_TrayMenu.Add("Profiles", profileMenu)
-    pause_state_message := state.show_pause_Message ? "enabled" : "disabled"
+    pause_state_message := state.show_pause_Message ? "enabled ✅" : "disabled ❌"
     A_TrayMenu.Add("Pause message: " pause_state_message, (*) => toggle_pause_message())
-    force_attentive_mood_message := state.force_attentive_mood ? "enabled" : "disabled"
+    force_attentive_mood_message := state.force_attentive_mood ? "enabled ✅" : "disabled ❌"
     A_TrayMenu.Add("Force attentive mood: " force_attentive_mood_message, (*) => toggle_attentive_mood_force())
     A_TrayMenu.Add("Exit", (*) => ExitApp())
 }
