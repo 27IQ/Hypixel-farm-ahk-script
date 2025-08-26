@@ -2,16 +2,18 @@
 
 global keys := { a_key: "a", d_key: "d", w_key: "w", s_key: "s" }
 
+global directions := { left: "left", right: "right" }
+
 ; Naming scheme : <plot_length>x<layercount> <name> @ <speed> (<pitch>|<yaw>)    pitch and yaw should be facing centric
 global profiles := [
-    { name: "5x5 Nether Warts @ 116 (0|0)", row_clear_time: 96000, void_drop_time: 3500, layer_swap_time: 0, layer_count: 5 , keys_left:[keys.a_key], keys_right:[keys.d_key], keys_layer_swap:[keys.w_key]},
-    { name: "5x5 Mushroom @ 130 (25|0)", row_clear_time: 96000, void_drop_time: 3500, layer_swap_time: 0, layer_count: 5 , keys_left:[keys.w_key], keys_right:[keys.d_key, keys.s_key], keys_layer_swap:[keys.w_key]}
+    { name: "5x5 Nether Warts @ 116 (0|0)", left_row_clear_time: 96000, right_row_clear_time: 96000,void_drop_time: 3500, layer_swap_time: 0, layer_count: 5, keys_left: [keys.a_key], keys_right: [keys.d_key],keys_layer_swap: [keys.w_key] }, 
+    { name: "5x4 Mushroom @ 130 (25L|0)", left_row_clear_time: 90000,right_row_clear_time: 94000, void_drop_time: 3500, layer_swap_time: 800, layer_count: 4, keys_left: [keys.w_key,keys.a_key], keys_right: [keys.d_key], keys_layer_swap: [keys.w_key] }
 ]
 
 global moods := [
-    { name:"attentive", click_delay: 0, overshoot_chance: 0, overshoot_duration: 0, overshoot_duration_variable: 0, mood_min_duration: 10, mood_max_duration: 1200000, mood_chance: 0.30 ,click_delay_miss: 0.0},
-    { name:"inattentive", click_delay: 100, overshoot_chance: 0.2, overshoot_duration: 5, overshoot_duration_variable: 3000, mood_min_duration: 10, mood_max_duration: 1800000,mood_chance: 0.45 ,click_delay_miss: 0.0},
-    { name:"distracted", click_delay: 250, overshoot_chance: 0.1, overshoot_duration: 10, overshoot_duration_variable: 5000, mood_min_duration: 5, mood_max_duration: 900000, mood_chance: 0.25, click_delay_miss: 0.5 },
+    { name: "attentive", click_delay: 0, overshoot_chance: 0, overshoot_duration: 0,overshoot_duration_variable: 0, mood_min_duration: 10, mood_max_duration: 1200000, mood_chance: 0.30,click_delay_miss: 0.0 }, 
+    { name: "inattentive", click_delay: 100, overshoot_chance: 0.2, overshoot_duration: 5,overshoot_duration_variable: 3000, mood_min_duration: 10, mood_max_duration: 1800000, mood_chance: 0.45,click_delay_miss: 0.0 }, 
+    { name: "distracted", click_delay: 250, overshoot_chance: 0.1, overshoot_duration: 10,overshoot_duration_variable: 5000, mood_min_duration: 5, mood_max_duration: 900000, mood_chance: 0.25,click_delay_miss: 0.5 },
 ]
 
 global state := {
@@ -21,7 +23,7 @@ global state := {
     is_active: false,
     is_paused: false,
     focus_lost: false,
-    current_keys: profiles[1].keys_left,
+    current_direction: "",
     ; settings
     polling_interval: 100,
     show_pause_Message: true,
@@ -31,7 +33,7 @@ global state := {
     current_mood_duration: moods[1].mood_min_duration,
     force_attentive_mood: false,
     ; debugging
-    debugging: true,
+    debugging: false,
     added_time: 0,
     walked_time: 0,
     paused_time: 0,
@@ -42,7 +44,7 @@ global state := {
 set_profile(profiles[1])
 update_tray()
 
-SetTimer(check_minecraft_window_focus, 2000)
+SetTimer(check_minecraft_window_focus, state.polling_interval)
 
 F1::
 F2::
@@ -62,7 +64,14 @@ F2::
         state.is_paused := false
         state.focus_lost := false
     } else {
-        run_farm(A_ThisHotkey = "F1" ? state.current_profile.keys_right : state.current_profile.keys_left)
+
+        if (A_ThisHotkey = "F2") {
+            state.current_direction := directions.right
+        } else {
+            state.current_direction := directions.left
+        }
+
+        run_farm()
     }
 }
 
@@ -76,7 +85,7 @@ F3::
     state.is_paused := !state.is_paused
 }
 
-run_farm(start_keys) {
+run_farm() {
     global state
 
     if (state.debugging) {
@@ -89,8 +98,6 @@ run_farm(start_keys) {
     state.is_active := true
 
     while (state.is_active) {
-
-        state.current_keys := start_keys
 
         loop state.current_profile.layer_count {
             clear_row()
@@ -125,7 +132,7 @@ run_farm(start_keys) {
 clear_row() {
     global state
 
-    total_time := state.current_profile.row_clear_time + Random(0, 250) + get_mood_overshoot()
+    total_time := get_current_row_clear_time() + Random(0, 250) + get_mood_overshoot()
 
     set_current_buttons("down")
 
@@ -150,7 +157,8 @@ clear_row() {
 
         if (state.debugging) {
             state.walked_time += actual_sleep
-            ToolTip("Row progress: " . Round((elapsed_time / total_time) * 100) . "%`nCurrent mood: " state.current_mood.name)
+            ToolTip("Row progress: " . Round((elapsed_time / total_time) * 100) . "%`nCurrent mood: " state.current_mood
+            .name)
         }
 
         if (state.is_paused) {
@@ -214,29 +222,29 @@ handle_pause_state() {
     ToolTip()
 }
 
-set_current_buttons(toggle){
+set_current_buttons(toggle) {
     global state
 
-    deviation := get_click_deviation(state.current_keys.Length)
-    miss:=get_click_delay_miss()
-    current_key_order:=get_current_key_order()
+    deviation := get_click_deviation(get_current_direction_keys().Length)
+    miss := get_click_delay_miss()
+    current_key_order := get_current_key_order()
 
-    if(toggle=="down"){
+    if (toggle == "down") {
         PreciseSleep(10)
         Click toggle
-        PreciseSleep((miss? 0 : 500 ) + deviation[1])
+        PreciseSleep((miss ? 0 : 500) + deviation[1])
 
-        loop deviation.Length-1{
+        loop deviation.Length - 1 {
             Send "{" current_key_order[A_Index] " " toggle "}"
-            PreciseSleep(deviation[A_Index+1])
+            PreciseSleep(deviation[A_Index + 1])
         }
 
-    }else if(toggle=="up"){
+    } else if (toggle == "up") {
         PreciseSleep(10)
-        
-        loop deviation.Length-1{
+
+        loop deviation.Length - 1 {
             Send "{" current_key_order[A_Index] " " toggle "}"
-            PreciseSleep(deviation[A_Index+1])
+            PreciseSleep(deviation[A_Index + 1])
         }
 
         Click toggle
@@ -250,36 +258,38 @@ get_click_deviation(count) {
     rand := Random(50, 100)
     mood_delay := state.force_attentive_mood ? moods[1].click_delay : state.current_mood.click_delay
 
-    result:=[rand+ mood_delay] 
+    result := [rand + mood_delay]
 
-    loop count{
+    loop count {
         result.Push(Random(0, 70))
     }
 
     return result
 }
 
-get_current_key_order(){
+get_current_key_order() {
     global state
 
-    min:=1
-    max:=state.current_keys.Length
+    min := 1
+    current_keys := get_current_direction_keys()
+    max := current_keys.Length
 
-    results:=[]
+    results := []
 
-    while (results.Length<state.current_keys.Length){
-        pull:=Random(min,max)
+    while (results.Length < current_keys.Length
+    ) {
+        pull := Random(min, max)
 
-        if(results.Length==0){
-            results.Push(state.current_keys[pull])
+        if (results.Length == 0) {
+            results.Push(current_keys[pull])
             continue
         }
 
         for value in results {
-            if(value==state.current_keys[pull]){
+            if (value == current_keys[pull]) {
                 continue
-            }else{
-                results.Push(state.current_keys[pull])
+            } else {
+                results.Push(current_keys[pull])
             }
         }
     }
@@ -287,29 +297,52 @@ get_current_key_order(){
     return results
 }
 
-get_click_delay_miss(){
+get_click_delay_miss() {
     global state
 
-    pull:=Random(0,1)
+    pull := Random(0, 1)
 
-    return pull==1?true:false
+    return pull == 1 ? true : false
 }
 
 layer_swap() {
     global state
 
-    Send "{" state.current_profile.keys_layer_swap " down}"
+    keys := state.current_profile.keys_layer_swap
+
+    deviation := get_click_deviation(keys.Length * 2)
+
+    loop (keys.Length) {
+        Send "{" state.current_profile.keys_layer_swap[A_Index] " down}"
+        PreciseSleep(deviation[A_Index])
+    }
 
     if (state.debugging)
         state.walked_time += state.current_profile.layer_swap_time
 
-    Sleep state.current_profile.layer_swap_time + 50
-    Send "{" state.current_profile.keys_layer_swap " up}"
+    PreciseSleep(state.current_profile.layer_swap_time)
+
+    loop (keys.Length) {
+        Send "{" state.current_profile.keys_layer_swap[A_Index] " up}"
+        PreciseSleep(deviation[keys.Length + A_Index])
+    }
 }
 
 toggle_direction() {
     global state
-    state.current_keys := state.current_keys == state.current_profile.keys_left ? state.current_profile.keys_right : state.current_profile.keys_left
+    state.current_direction := state.current_direction == directions.left ? directions.right : directions.left
+}
+
+get_current_direction_keys() {
+    global state
+
+    return state.current_direction == directions.left ? state.current_profile.keys_left : state.current_profile.keys_right
+}
+
+get_current_row_clear_time() {
+    global state
+
+    return state.current_direction == directions.left ? state.current_profile.left_row_clear_time : state.current_profile.right_row_clear_time
 }
 
 get_mood_overshoot() {
@@ -368,7 +401,7 @@ set_profile(profile, *) {
         return
     }
 
-    state.current_profile:=profile
+    state.current_profile := profile
 
     update_tray()
 }
@@ -379,7 +412,8 @@ update_tray() {
     A_TrayMenu.Delete()
 
     A_TrayMenu.Add("Profile: " state.current_profile.name, (*) => 0)
-    A_TrayMenu.Add("Row clear time: " state.current_profile.row_clear_time, (*) => 0)
+    A_TrayMenu.Add("Left row clear time: " state.current_profile.left_row_clear_time, (*) => 0)
+    A_TrayMenu.Add("Right row clear time: " state.current_profile.right_row_clear_time, (*) => 0)
     A_TrayMenu.Add("Void drop time: " state.current_profile.void_drop_time, (*) => 0)
     A_TrayMenu.Add("W layer swap time: " state.current_profile.layer_swap_time, (*) => 0)
     A_TrayMenu.Add("Layer count: " state.current_profile.layer_count, (*) => 0)
