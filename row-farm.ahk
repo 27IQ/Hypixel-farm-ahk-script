@@ -28,9 +28,9 @@ global state := {
     polling_interval: 100,
     show_pause_Message: true,
     ; moods
-    current_mood: moods[1],
-    previous_mood: moods[1],
-    current_mood_duration: moods[1].mood_min_duration,
+    current_mood: get_next_mood(),
+    previous_mood: moods[3],
+    current_mood_duration: 0,
     force_attentive_mood: false,
     ; debugging
     debugging: false,
@@ -175,7 +175,7 @@ clear_row() {
             state.walked_time += actual_sleep
         }
 
-        ToolTip("Row progress: " . Round((elapsed_time / total_time) * 100) . "%`nCurrent mood: " state.current_mood.name "`nRow time: " total_time "`nElapsed time: " elapsed_time "`nMood Time: " mood_overshoot)
+        ToolTip(state.current_profile.name "`nRow progress: " . Round((elapsed_time / total_time) * 100) . "%`nCurrent mood: " state.current_mood.name "`nRow time: " getTimeStringFromMilis(total_time) "`nElapsed row time: " getTimeStringFromMilis(elapsed_time) "`nMood Time: " getTimeStringFromMilis(state.current_mood_duration) " `nMood overshoot: " getTimeStringFromMilis(mood_overshoot))
     }
 
     set_current_buttons("up")
@@ -477,4 +477,11 @@ PreciseSleep(ms) {
     while (A_TickCount < end) {
         DllCall("Sleep", "UInt", 1)
     }
+}
+
+getTimeStringFromMilis(milis) {
+    minutes := Floor(milis / 60000)
+    seconds := Floor(Mod(milis, 60000) / 1000)
+    milliseconds := Mod(milis, 1000)
+    return minutes ":" Format("{:02}", seconds) "," Format("{:03}", milliseconds)
 }
