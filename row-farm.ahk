@@ -96,6 +96,7 @@ run_farm() {
     }
 
     state.is_active := true
+    state.is_paused := false
 
     while (state.is_active) {
 
@@ -144,9 +145,23 @@ clear_row() {
         remaining_time := total_time - elapsed_time
         sleep_chunk := Min(state.polling_interval, remaining_time)
 
+        if (state.is_paused) {
+            set_current_buttons("up")
+            handle_pause_state()
+            if (state.is_active)
+                set_current_buttons("down")
+        }
+
         sleep_start := A_TickCount
         Sleep sleep_chunk
         actual_sleep := A_TickCount - sleep_start
+
+        if (state.is_paused) {
+            set_current_buttons("up")
+            handle_pause_state()
+            if (state.is_active)
+                set_current_buttons("down")
+        }
 
         elapsed_time += actual_sleep
 
