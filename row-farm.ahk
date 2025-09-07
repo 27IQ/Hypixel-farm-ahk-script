@@ -7,13 +7,13 @@ global directions := { left: "left", right: "right" }
 ; Naming scheme : <plot_length>x<layercount> <name> @ <speed> (<pitch>|<yaw>)    pitch and yaw should be facing centric
 global profiles := [
     { name: "5x5 Nether Warts @ 116 (0|0)", left_row_clear_time: 96000, right_row_clear_time: 96000,void_drop_time: 3500, layer_swap_time: 0, layer_count: 5, keys_left: [keys.a_key], keys_right: [keys.d_key],keys_layer_swap: [keys.w_key] }, 
-    { name: "5x4 Mushroom @ 130 (25L|0)", left_row_clear_time: 90000,right_row_clear_time: 94000, void_drop_time: 3500, layer_swap_time: 800, layer_count: 4, keys_left: [keys.w_key,keys.a_key], keys_right: [keys.d_key], keys_layer_swap: [keys.w_key] }
+    { name: "5x4 Mushroom @ 126 (25L|0)", left_row_clear_time: 92000,right_row_clear_time: 97000, void_drop_time: 3500, layer_swap_time: 0, layer_count: 4, keys_left: [keys.w_key,keys.a_key], keys_right: [keys.d_key], keys_layer_swap: [keys.w_key] }
 ]
 
 global moods := [
-    { name: "attentive", click_delay: 0, overshoot_chance: 0, overshoot_duration: 0,overshoot_duration_variable: 0, mood_min_duration: 10, mood_max_duration: 1200000, mood_chance: 0.30,click_delay_miss: 0.0 }, 
-    { name: "inattentive", click_delay: 100, overshoot_chance: 0.2, overshoot_duration: 5,overshoot_duration_variable: 3000, mood_min_duration: 10, mood_max_duration: 1800000, mood_chance: 0.45,click_delay_miss: 0.0 }, 
-    { name: "distracted", click_delay: 250, overshoot_chance: 0.1, overshoot_duration: 10,overshoot_duration_variable: 5000, mood_min_duration: 5, mood_max_duration: 900000, mood_chance: 0.25,click_delay_miss: 0.5 },
+    { name: "attentive", click_delay: 0, overshoot_chance: 0, overshoot_duration: 0,overshoot_duration_variable: 0, mood_min_duration: 600000, mood_max_duration: 720000, mood_chance: 0.30,click_delay_miss: 0.0 }, 
+    { name: "inattentive", click_delay: 100, overshoot_chance: 0.2, overshoot_duration: 5000,overshoot_duration_variable: 3000, mood_min_duration: 600000, mood_max_duration: 108000, mood_chance: 0.45,click_delay_miss: 0.0 }, 
+    { name: "distracted", click_delay: 250, overshoot_chance: 0.1, overshoot_duration: 10000,overshoot_duration_variable: 5000, mood_min_duration: 300000, mood_max_duration: 540000, mood_chance: 0.25,click_delay_miss: 0.5 },
 ]
 
 global state := {
@@ -132,7 +132,8 @@ run_farm() {
 clear_row() {
     global state
 
-    total_time := get_current_row_clear_time() + Random(0, 250) + get_mood_overshoot()
+    mood_overshoot:=get_mood_overshoot()
+    total_time := get_current_row_clear_time() + Random(0, 250) + mood_overshoot
 
     set_current_buttons("down")
 
@@ -150,16 +151,16 @@ clear_row() {
         elapsed_time += actual_sleep
 
         if (state.current_mood_duration > 0) {
-            state.current_mood_duration -= state.polling_interval
-        } else {
+            state.current_mood_duration -= actual_sleep
+        }else{
             switch_mood()
         }
 
         if (state.debugging) {
             state.walked_time += actual_sleep
-            ToolTip("Row progress: " . Round((elapsed_time / total_time) * 100) . "%`nCurrent mood: " state.current_mood
-            .name)
         }
+
+        ToolTip("Row progress: " . Round((elapsed_time / total_time) * 100) . "%`nCurrent mood: " state.current_mood.name "`nRow time: " total_time "`nElapsed time: " elapsed_time "`nMood Time: " mood_overshoot)
 
         if (state.is_paused) {
             set_current_buttons("up")
