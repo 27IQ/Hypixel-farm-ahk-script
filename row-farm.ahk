@@ -176,13 +176,6 @@ clear_row() {
         }
 
         ToolTip("Row progress: " . Round((elapsed_time / total_time) * 100) . "%`nCurrent mood: " state.current_mood.name "`nRow time: " total_time "`nElapsed time: " elapsed_time "`nMood Time: " mood_overshoot)
-
-        if (state.is_paused) {
-            set_current_buttons("up")
-            handle_pause_state()
-            if (state.is_active)
-                set_current_buttons("down")
-        }
     }
 
     set_current_buttons("up")
