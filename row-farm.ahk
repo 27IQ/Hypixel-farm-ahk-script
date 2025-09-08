@@ -27,6 +27,7 @@ global state := {
     ; settings
     polling_interval: 100,
     show_pause_Message: true,
+    pause_protection: true,
     ; moods
     current_mood: get_next_mood(),
     previous_mood: moods[3],
@@ -83,6 +84,30 @@ F3::
         return
 
     state.is_paused := !state.is_paused
+}
+
+~e::    ;opening the inventory
+~Esc::  ;opening the mc menu
+~t::    ;open chat
+~-::    ;open command
+~WheelUp::  ;swapping off farming tool
+~WheelDown::    ;swapping off farming tool
+~1::    ;swapping off farming tool
+~2::    ;swapping off farming tool
+~3::    ;swapping off farming tool
+~4::    ;swapping off farming tool
+~5::    ;swapping off farming tool   
+~6::    ;swapping off farming tool
+~7::    ;swapping off farming tool
+~8::    ;swapping off farming tool
+~9::    ;swapping off farming tool
+{
+    global state
+
+    if (!state.is_active||!state.pause_protection)
+        return
+
+    state.is_paused := true
 }
 
 run_farm() {
@@ -145,25 +170,21 @@ clear_row() {
         remaining_time := total_time - elapsed_time
         sleep_chunk := Min(state.polling_interval, remaining_time)
 
-        if (state.is_paused) {
-            set_current_buttons("up")
-            handle_pause_state()
-            if (state.is_active)
-                set_current_buttons("down")
-        }
+        row_pause()
+        check_and_reactivate_current_keys()
 
         sleep_start := A_TickCount
         Sleep sleep_chunk
         actual_sleep := A_TickCount - sleep_start
 
-        if (state.is_paused) {
-            set_current_buttons("up")
-            handle_pause_state()
-            if (state.is_active)
-                set_current_buttons("down")
-        }
+        row_pause()
+        if(!check_and_reactivate_current_keys()){
+            elapsed_time += actual_sleep
 
-        elapsed_time += actual_sleep
+            if (state.debugging) {
+                state.walked_time += actual_sleep
+            }
+        }
 
         if (state.current_mood_duration > 0) {
             state.current_mood_duration -= actual_sleep
@@ -171,15 +192,79 @@ clear_row() {
             switch_mood()
         }
 
-        if (state.debugging) {
-            state.walked_time += actual_sleep
-        }
-
         ToolTip(state.current_profile.name "`nRow progress: " . Round((elapsed_time / total_time) * 100) . "%`nCurrent mood: " state.current_mood.name "`nRow time: " getTimeStringFromMilis(total_time) "`nElapsed row time: " getTimeStringFromMilis(elapsed_time) "`nMood Time: " getTimeStringFromMilis(state.current_mood_duration) " `nMood overshoot: " getTimeStringFromMilis(mood_overshoot))
     }
 
     set_current_buttons("up")
     ToolTip()
+}
+
+row_pause(){
+    global state
+
+    if (state.is_paused) {
+            set_current_buttons("up")
+            handle_pause_state()
+            if (state.is_active)
+                set_current_buttons("down")
+        }
+}
+
+check_and_reactivate_current_keys(){
+    global state
+
+    reactivated:=false
+
+    if(!check_current_keys_pressed()){
+            
+        current_keys:=state.current_direction==directions.left?state.current_profile.keys_left:state.current_profile.keys_right
+        reactivate_key_array(current_keys)
+    }
+
+    if(!GetKeyState("LButton","P")){
+        reactivated:=true
+        PreciseSleep(Random(50,100))
+        Click "down"
+        PreciseSleep(Random(50,100))
+    }
+
+    return reactivated
+}
+
+check_current_keys_pressed(){
+    global state
+
+    if(state.current_direction=="")
+        return false
+
+    current_keys:=state.current_direction==directions.left?state.current_profile.keys_left:state.current_profile.keys_right
+
+    return check_keys_array_pressed(current_keys)
+}
+
+check_keys_array_pressed(keys_array){
+    global state
+
+    for key in keys_array {
+        if(!GetKeyState(key,"P")){
+            return false
+        }
+    }
+
+    return true
+}
+
+reactivate_key_array(keys){
+    global state
+
+    for key in keys {
+        if(!GetKeyState(key,"P")){
+            reactivated:=true
+            PreciseSleep(Random(50,100))
+            Send "{" key " down }"
+            PreciseSleep(Random(50,100))
+        }
+    }
 }
 
 handle_void_drop() {
@@ -285,8 +370,7 @@ get_current_key_order() {
 
     results := []
 
-    while (results.Length < current_keys.Length
-    ) {
+    while (results.Length < current_keys.Length) {
         pull := Random(min, max)
 
         if (results.Length == 0) {
@@ -330,6 +414,16 @@ layer_swap() {
         state.walked_time += state.current_profile.layer_swap_time
 
     PreciseSleep(state.current_profile.layer_swap_time)
+
+    loop{
+        PreciseSleep(state.current_profile.layer_swap_time)
+
+        if(check_keys_array_pressed(keys)){
+            break
+        }else{
+            reactivate_key_array(keys)
+        }
+    }
 
     loop (keys.Length) {
         Send "{" state.current_profile.keys_layer_swap[A_Index] " up}"
